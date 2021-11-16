@@ -9,6 +9,7 @@ class IncomingRequest(models.Model):
     updated_date = models.DateTimeField(auto_now=True)
     added_date = models.DateTimeField(auto_now_add=True)
     resp_status = models.IntegerField(default=10)
+    resp_size = models.IntegerField(default=0)
 
 
 

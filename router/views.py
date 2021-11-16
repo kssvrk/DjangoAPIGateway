@@ -15,13 +15,24 @@ TODO :
 '''
 
 #-------- SETUP CLOSE FUNCTIONS----------------
-def outgoinginsert(ir,status):
-    IncomingRequest.objects.filter(pk=ir.pk).update(resp_status=status)
+def outgoinginsert(ir,status,size=0):
+    try:
+        before_size=ir.resp_size
+        #print(size,before_size,ir,ir.pk)
+        ir.resp_status=status
+        ir.resp_size=size+before_size
+        ir.save()
+    except Exception as e:
+        print(e)
 
 #-------- SETUP CLOSE FUNCTIONS DONE----------------        
 
 def index(request):
     return HttpResponse("Hello, world. You're at the router index.")
+def stream_rendered(resp,ir,status):
+    for chunk in resp.iter_content(512 * 1024):
+        outgoinginsert(ir,status,size=len(chunk))
+        yield chunk
 
 from .models import GatewayRoute
 
@@ -30,7 +41,7 @@ from .models import GatewayRoute
 def proxy(request,path):
     #SITE_NAME='http://172.31.6.22:5495/'
     ip, is_routable = get_client_ip(request)
-    
+    ir=None
     try:
         SITE_NAME,timeout,stream,route=GatewayRoute.objects.getLBRoute(path)
         if ip is not None:
@@ -48,22 +59,29 @@ def proxy(request,path):
     method=request.method.lower()
     if(method in accepted_methods):
         try:
+            
             resp = globals()[method](f'{SITE_NAME}',headers=request.headers,data=request.body,timeout=timeout,stream=stream)
             #excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
             #headers = [(name, value) for (name, value) in  resp.raw.headers.items() if name.lower() not in excluded_headers]
             #print(resp.content,resp.status_code,headers)
             if(not stream):
                 response = HttpResponse(resp.content, status=resp.status_code)
-            else:
-                response = StreamingHttpResponse(
-                            (chunk for chunk in resp.iter_content(512 * 1024)),
-                            status=resp.status_code)
-            for (name,value) in resp.raw.headers.items():
+                for (name,value) in resp.raw.headers.items():
                 #if(name.lower() not in excluded_headers):
-                response[name]=value
-            status=resp.status_code
-            outgoinginsert(ir,status)
-            return response
+                    response[name]=value
+                status=resp.status_code
+                outgoinginsert(ir,status)
+                return response
+            else:
+                size=0
+                response = StreamingHttpResponse(
+                            stream_rendered(resp,ir,resp.status_code),
+                            status=resp.status_code ,
+                            )
+                for (name,value) in resp.raw.headers.items():
+                #if(name.lower() not in excluded_headers):
+                    response[name]=value
+                return response
         except requests.exceptions.Timeout:
             # Maybe set up for a retry, or continue in a retry loop
             status=504

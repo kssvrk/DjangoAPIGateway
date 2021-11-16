@@ -5,8 +5,8 @@ import time
 
 # Flask constructor takes the name of
 # current module (__name__) as argument.
-app = Flask(__name__)
-port=5496
+app = Flask(__name__,static_url_path='/static',static_folder='/home/radhakrishna/Downloads',)
+port=5495
 # The route() function of the Flask class is a decorator,
 # which tells the application which URL should call
 # the associated function.
@@ -15,7 +15,9 @@ port=5496
 def hello_world():
     #print(app.config)
     #time.sleep(10)
-    return f'Hello World on {port}'
+    return f''' Hello World on 
+    {port} '''
+    
  
 # main driver function
 if __name__ == '__main__':
