@@ -16,6 +16,7 @@ class GatewayEndpoint(models.Model):
     endpoint_path = models.CharField(max_length=100,unique=True)
     updated_date = models.DateTimeField(auto_now=True)
     added_date = models.DateTimeField(auto_now_add=True)
+    stream = models.BooleanField(default=False)
     def __str__(self):
         return f"Gateway Endpoint : {self.endpoint_path}"
 
@@ -39,10 +40,11 @@ class GatewayRouteManager(models.Manager):
 
     def getLBRoute(self,endpoint):
         ep=GatewayEndpoint.objects.get(endpoint_path=endpoint)
-        routes=list(GatewayRoute.objects.filter(endpoint=ep).values('targeturl'))
+        routes=list(GatewayRoute.objects.filter(endpoint=ep).filter(activate=True))
+        
         getpk=randint(0,len(routes)-1)
-        #print(routes,getpk)
-        return TargetURL.objects.filter(pk=routes[getpk]['targeturl']).values('url_path')[0]['url_path']
+        #returns url,timeout,stream,route
+        return TargetURL.objects.filter(pk=routes[getpk].targeturl.pk).values('url_path')[0]['url_path'],routes[getpk].timeout,ep.stream,routes[getpk]
         #return routes[randint(0,routes.count()-1)]
         
         
@@ -56,6 +58,8 @@ class GatewayRoute(models.Model):
     #primary key for identifying this route
     route_id= models.AutoField(primary_key=True)
     added_date = models.DateTimeField(auto_now_add=True)
+    activate=models.BooleanField(default=True)
+    timeout=models.IntegerField(default=10)
     objects = GatewayRouteManager()
     class Meta:
         unique_together = ('endpoint', 'targeturl',)

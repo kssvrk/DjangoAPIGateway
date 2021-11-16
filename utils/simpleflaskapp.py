@@ -1,7 +1,7 @@
 # Importing flask module in the project is mandatory
 # An object of Flask class is our WSGI application.
 from flask import Flask,request
-
+import time
 
 # Flask constructor takes the name of
 # current module (__name__) as argument.
@@ -14,6 +14,7 @@ port=5496
 # ‘/’ URL is bound with hello_world() function.
 def hello_world():
     #print(app.config)
+    #time.sleep(10)
     return f'Hello World on {port}'
  
 # main driver function
